@@ -1,4 +1,5 @@
 import defaults from 'lodash.defaults';
+import omit from 'lodash.omit';
 import Q from 'q';
 import request from 'superagent';
 import url from 'url';
@@ -70,18 +71,27 @@ export default class BullhornClient {
 
   createCandidateAndJobSubmission (jobId, candidate) {
     return this
-      .createCandidate(candidate)
+      .createCandidate(omit(candidate, ['file', 'fileName']))
       .then((res) => {
-        return this.createJobSumission({
+        const candidateId = res.changedEntityId;
+        const promises = [];
+
+        promises.push(this.createJobSumission({
           candidate: {
-            id: res.changedEntityId
+            id: candidateId
           },
           jobOrder: {
             id: jobId
           },
           status: 'New Lead',
           dateWebResponse: new Date().getTime()
-        });
+        }));
+
+        if (candidate.file) {
+          promises.push(this.sendFile('Candidate/' + candidateId, candidate.file, candidate.fileName));
+        }
+
+        return Q.all(promises);
       });
   }
 
@@ -201,6 +211,35 @@ export default class BullhornClient {
       .login()
       .then((res) => {
         return res.BhRestToken;
+      });
+  }
+
+  sendFile (entity, base64file, filename) {
+    return this
+      .setup()
+      .then((restToken) => {
+        const deferred = Q.defer();
+
+        request
+          .put(this.buildUrl('file/' + entity))
+          .send({
+            externalID: 'cv',
+            fileContent: base64file,
+            fileType: 'SAMPLE',
+            name: filename
+          })
+          .query({
+            BhRestToken: restToken
+          })
+          .end((error, res) => {
+            if (error) {
+              deferred.reject(error);
+            } else {
+              deferred.resolve(res.body);
+            }
+          });
+
+        return deferred.promise;
       });
   }
 
