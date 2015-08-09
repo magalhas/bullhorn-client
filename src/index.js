@@ -20,6 +20,71 @@ export default class BullhornClient {
     return this._restUrl + `${path}`;
   }
 
+  createCandidate (candidate) {
+    return this
+      .setup()
+      .then((restToken) => {
+        const deferred = Q.defer();
+
+        request
+          .put(this.buildUrl('entity/Candidate'))
+          .query({
+            BhRestToken: restToken
+          })
+          .send(candidate)
+          .end((error, res) => {
+            if (error) {
+              deferred.reject(error);
+            } else {
+              deferred.resolve(res.body);
+            }
+          });
+
+          return deferred.promise;
+      });
+  }
+
+  createJobSumission (jobSubmission) {
+    return this
+      .setup()
+      .then((restToken) => {
+        const deferred = Q.defer();
+
+        request
+          .put(this.buildUrl('entity/JobSubmission'))
+          .query({
+            BhRestToken: restToken
+          })
+          .send(jobSubmission)
+          .end((error, res) => {
+            if (error) {
+              deferred.reject(error);
+            } else {
+              deferred.resolve(res.body);
+            }
+          });
+
+        return deferred.promise;
+      });
+  }
+
+  createCandidateAndJobSubmission (jobId, candidate) {
+    return this
+      .createCandidate(candidate)
+      .then((res) => {
+        return this.createJobSumission({
+          candidate: {
+            id: res.changedEntityId
+          },
+          jobOrder: {
+            id: jobId
+          },
+          status: 'New Lead',
+          dateWebResponse: new Date().getTime()
+        });
+      });
+  }
+
   login () {
     return this
       .getAccessToken()
