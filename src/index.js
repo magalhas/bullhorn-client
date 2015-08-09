@@ -105,7 +105,7 @@ export default class BullhornClient {
       });
   }
 
-  getOpenJobs () {
+  getOpenJobs (fields = ['*']) {
     return this
       .setup()
       .then((restToken) => {
@@ -115,7 +115,7 @@ export default class BullhornClient {
           .get(this.buildUrl('query/JobOrder'))
           .query({
             BhRestToken: restToken,
-            fields: '*',
+            fields: fields.join(','),
             where: 'isOpen=true',
             count: 499
           })
