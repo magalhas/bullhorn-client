@@ -248,7 +248,7 @@ export default class BullhornClient {
     const now = new Date().getTime();
 
     // If more than 8 minutes passed we should get a new token
-    if (!this._loginAt || this._loginAt - now > 8 * 60 * 1000) {
+    if (!this._loginAt || now - this._loginAt > 8 * 60 * 1000) {
       should = true;
     }
 
