@@ -4,6 +4,7 @@
   "description": "Bullhorn client",
   "main": "lib/index.js",
   "scripts": {
+    "prepublish": "npm run build",
     "build": "grunt build",
     "dev": "grunt watch",
     "test": "echo \"Error: no test specified\" && exit 1",
