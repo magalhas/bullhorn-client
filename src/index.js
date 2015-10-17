@@ -21,6 +21,29 @@ export default class BullhornClient {
     return this._restUrl + `${path}`;
   }
 
+  associateCandidateToTeersheet (teersheetId, candidateIds) {
+    return this
+      .setup()
+      .then((restToken) => {
+        const deferred = Q.defer();
+
+        request
+          .put(this.buildUrl(`entity/Tearsheet/${teersheetId}/candidates/${candidateIds.join(',')}`))
+          .query({
+            BhRestToken: restToken
+          })
+          .end((error, res) => {
+            if (error) {
+              deferred.reject(error);
+            } else {
+              deferred.resolve(res.body);
+            }
+          });
+
+        return deferred.promise;
+      });
+  }
+
   createCandidate (candidate) {
     return this
       .setup()
