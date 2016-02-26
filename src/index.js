@@ -1,8 +1,8 @@
 import defaults from 'lodash.defaults';
 import omit from 'lodash.omit';
-import Q from 'q';
 import request from 'superagent';
 import url from 'url';
+import Q from 'q';
 
 export default class BullhornClient {
   constructor (options = {}) {
@@ -13,8 +13,11 @@ export default class BullhornClient {
       username: '',
       password: '',
       clientId: '',
-      clientSecret: ''
+      clientSecret: '',
+      logger: console.log
     });
+
+    this.logger = this.options.logger;
   }
 
   buildUrl (path) {
@@ -26,6 +29,11 @@ export default class BullhornClient {
       .setup()
       .then((restToken) => {
         const deferred = Q.defer();
+
+        this.logger('Associating candidate to tearsheet', {
+          teersheetId,
+          candidateIds: candidateIds.join(',')
+        });
 
         request
           .put(this.buildUrl(`entity/Tearsheet/${teersheetId}/candidates/${candidateIds.join(',')}`))
@@ -47,24 +55,36 @@ export default class BullhornClient {
   createCandidate (candidate) {
     return this
       .setup()
-      .then((restToken) => {
-        const deferred = Q.defer();
+      .then(() => {
+        const {email} = candidate;
+        var promise;
 
-        request
-          .put(this.buildUrl('entity/Candidate'))
-          .query({
-            BhRestToken: restToken
-          })
-          .send(candidate)
-          .end((error, res) => {
-            if (error) {
-              deferred.reject(error);
-            } else {
-              deferred.resolve(res.body);
-            }
-          });
+        if (email) {
+          promise = this.getCandidateByEmail(email);
+        } else {
+          promise = Q()
+            .then((restToken) => {
+              const deferred = Q.defer();
 
-          return deferred.promise;
+              request
+              .put(this.buildUrl('entity/Candidate'))
+              .query({
+                BhRestToken: restToken
+              })
+              .send(candidate)
+              .end((error, res) => {
+                if (error) {
+                  deferred.reject(error);
+                } else {
+                  deferred.resolve(res.body.changedEntityId);
+                }
+              });
+
+              return deferred.promise;
+            })
+        }
+
+        return promise;
       });
   }
 
@@ -73,6 +93,10 @@ export default class BullhornClient {
       .setup()
       .then((restToken) => {
         const deferred = Q.defer();
+
+        this.logger('Creating job submission', {
+          jobSubmission
+        });
 
         request
           .put(this.buildUrl('entity/JobSubmission'))
@@ -95,8 +119,7 @@ export default class BullhornClient {
   createCandidateAndJobSubmission (jobId, candidate) {
     return this
       .createCandidate(omit(candidate, ['file', 'fileName']))
-      .then((res) => {
-        const candidateId = res.changedEntityId;
+      .then((candidateId) => {
         const promises = [];
 
         promises.push(this.createJobSumission({
@@ -150,6 +173,8 @@ export default class BullhornClient {
     const deferred = Q.defer();
     const {username, password, clientId: client_id} = this.options;
 
+    this.logger('Getting authorization code');
+
     request
       .post(this.options.authEndpoint + 'authorize')
       .type('form')
@@ -182,6 +207,8 @@ export default class BullhornClient {
       .then((code) => {
         const deferred = Q.defer();
 
+        this.logger('Getting access token');
+
         request
           .post(this.options.authEndpoint + 'token')
           .query({
@@ -203,11 +230,51 @@ export default class BullhornClient {
       });
   }
 
+  getCandidateByEmail (email, fields = ['*']) {
+    return this
+      .setup()
+      .then((restToken) => {
+        var deferred = Q.defer();
+
+        this.logger('Finding candidate by e-mail', {
+          email,
+          fields: fields.join(',')
+        });
+
+        request
+          .get(this.buildUrl('find'))
+          .query({
+            BhRestToken: restToken,
+            query: email
+          })
+          .end((error, res) => {
+            if (error) {
+              console.log(error);
+              deferred.reject(error);
+            } else {
+              let entityId;
+              res.body.data.forEach((entry) => {
+                if (entry.entityType === 'Candidate') {
+                  entityId = entry.entityId;
+                }
+              });
+              deferred.resolve(entityId);
+            }
+          });
+
+        return deferred.promise;
+      });
+  }
+
   getOpenJobs (fields = ['*']) {
     return this
       .setup()
       .then((restToken) => {
         var deferred = Q.defer();
+
+        this.logger('Getting open jobs', {
+          fields: fields.join(',')
+        });
 
         request
           .get(this.buildUrl('query/JobOrder'))
@@ -242,6 +309,11 @@ export default class BullhornClient {
       .setup()
       .then((restToken) => {
         const deferred = Q.defer();
+
+        this.logger('Sending file', {
+          entity,
+          filename
+        });
 
         request
           .put(this.buildUrl('file/' + entity))
