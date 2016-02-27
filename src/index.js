@@ -53,6 +53,29 @@ export default class BullhornClient {
   }
 
   createCandidate (candidate) {
+    function _createCandidate () {
+      return Q()
+        .then((restToken) => {
+          const deferred = Q.defer();
+
+          request
+          .put(this.buildUrl('entity/Candidate'))
+          .query({
+            BhRestToken: restToken
+          })
+          .send(candidate)
+          .end((error, res) => {
+            if (error) {
+              deferred.reject(error);
+            } else {
+              deferred.resolve(res.body.changedEntityId);
+            }
+          });
+
+          return deferred.promise;
+        });
+    }
+
     return this
       .setup()
       .then(() => {
@@ -60,28 +83,19 @@ export default class BullhornClient {
         var promise;
 
         if (email) {
-          promise = this.getCandidateByEmail(email);
+          promise = this
+            .getCandidateByEmail(email)
+            .then((candidateId) => {
+              var result;
+              if (candidateId) {
+                result = candidateId;
+              } else {
+                result = _createCandidate();
+              }
+              return result;
+            });
         } else {
-          promise = Q()
-            .then((restToken) => {
-              const deferred = Q.defer();
-
-              request
-              .put(this.buildUrl('entity/Candidate'))
-              .query({
-                BhRestToken: restToken
-              })
-              .send(candidate)
-              .end((error, res) => {
-                if (error) {
-                  deferred.reject(error);
-                } else {
-                  deferred.resolve(res.body.changedEntityId);
-                }
-              });
-
-              return deferred.promise;
-            })
+          promise = _createCandidate();
         }
 
         return promise;
