@@ -53,7 +53,7 @@ export default class BullhornClient {
   }
 
   createCandidate (candidate) {
-    function _createCandidate () {
+    const _createCandidate = () => {
       return Q()
         .then((restToken) => {
           const deferred = Q.defer();
