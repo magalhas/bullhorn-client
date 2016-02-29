@@ -54,7 +54,8 @@ export default class BullhornClient {
 
   createCandidate (candidate) {
     const _createCandidate = () => {
-      return Q()
+      return this
+        .setup()
         .then((restToken) => {
           const deferred = Q.defer();
 
@@ -80,8 +81,7 @@ export default class BullhornClient {
         });
     }
 
-    return this
-      .setup()
+    return Q()
       .then(() => {
         const {email} = candidate;
         var promise;
