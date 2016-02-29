@@ -58,19 +58,23 @@ export default class BullhornClient {
         .then((restToken) => {
           const deferred = Q.defer();
 
-          request
-          .put(this.buildUrl('entity/Candidate'))
-          .query({
-            BhRestToken: restToken
-          })
-          .send(candidate)
-          .end((error, res) => {
-            if (error) {
-              deferred.reject(error);
-            } else {
-              deferred.resolve(res.body.changedEntityId);
-            }
+          this.logger('Creating candidate', {
+            candidate
           });
+
+          request
+            .put(this.buildUrl('entity/Candidate'))
+            .query({
+              BhRestToken: restToken
+            })
+            .send(candidate)
+            .end((error, res) => {
+              if (error) {
+                deferred.reject(error);
+              } else {
+                deferred.resolve(res.body.changedEntityId);
+              }
+            });
 
           return deferred.promise;
         });
